@@ -1,0 +1,1 @@
+CAMERA_COUNT = 4
