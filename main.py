@@ -1,3 +1,4 @@
+import matplotlib
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 logging.basicConfig()
 # logging.root.setLevel(logging.INFO)
 logging.root.setLevel(logging.DEBUG)
+matplotlib.use('Qt5Agg')
 
 logging.info("Traffic simulator")
 logging.info("Version: 0.0.1")

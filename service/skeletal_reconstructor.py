@@ -45,11 +45,14 @@ class SkeletalReconstructor:
 					continue
 
 				landmark = subframe_landmarks.landmark[pose_landmark]
+				x = landmark.x
+				# x = landmark.x * self._calibrations[cam_idx].geometry_calibration.width
+				y = landmark.y
+				# y = landmark.y * self._calibrations[cam_idx].geometry_calibration.height
+				# x = (1 - landmark.x) * self._calibrations[cam_idx].geometry_calibration.width
+				# y = (1 - landmark.y) * self._calibrations[cam_idx].geometry_calibration.height
 
-				x = landmark.x * self._calibrations[cam_idx].geometry_calibration.width
-				y = landmark.y * self._calibrations[cam_idx].geometry_calibration.height
-
-				if landmark.visibility < 0.5:
+				if landmark.visibility < 0.7:
 					grouped_landmarks[pose_landmark].append(None)
 					continue
 
@@ -57,7 +60,7 @@ class SkeletalReconstructor:
 
 		guide_lines_per_landmark = dict()
 		for landmark_key in grouped_landmarks.keys():
-			if len(grouped_landmarks[landmark_key]) == 0:
+			if grouped_landmarks[landmark_key].count(None) >= 1:
 				continue
 
 			guide_lines_per_landmark[landmark_key] = self.map_image_point_to_camera_lines(grouped_landmarks[landmark_key])

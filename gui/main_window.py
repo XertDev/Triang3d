@@ -105,25 +105,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 		keypoints_3d = self.skeletal_reconstructor.keypoint_from_guide_lines_for_landmarks(reconstructed_lines)
 
-		center = [0, 0, 0]
+		# center = [0, 0, 0]
+		self.skeletal.clear()
 
-		for keypoint in keypoints_3d.values():
-			self.skeletal.draw_keypoint(keypoint[0], keypoint[1], keypoint[2])
-			center[0] += keypoint[0]
-			center[1] += keypoint[1]
-			center[2] += keypoint[2]
-
-		center[0] /= len(keypoints_3d)
-		center[1] /= len(keypoints_3d)
-		center[2] /= len(keypoints_3d)
-
-		self.skeletal.set_camera(center[0], center[1], center[2])
-
+		logging.info(f"Drawing {len(keypoints_3d)} points")
+		for label, keypoint in keypoints_3d.items():
+			self.skeletal.add_keypoint(keypoint[0], keypoint[1], keypoint[2], label)
+			# center[0] += keypoint[0]
+			# center[1] += keypoint[1]
+			# center[2] += keypoint[2]
 		for connection in mp.solutions.pose.POSE_CONNECTIONS:
 			if connection[0] in keypoints_3d.keys() and connection[1] in keypoints_3d.keys():
 				start = keypoints_3d[connection[0]]
 				end = keypoints_3d[connection[1]]
 				self.skeletal.draw_line(start, end)
+
+		self.skeletal.draw()
+
+		# center[0] /= len(keypoints_3d)
+		# center[1] /= len(keypoints_3d)
+		# center[2] /= len(keypoints_3d)
+		# extr = self.skeletal_reconstructor._calibrations[0].extrinsic_calibration
+		# self.skeletal.set_camera(center[0], center[1], center[2], extr.tx * 2, extr.ty * 1.5, extr.tz * 1.5)
+		#
+
 
 	def update_timeline(self):
 		self.timeline.blockSignals(True)

@@ -1,97 +1,85 @@
 import math
+from typing import List, Any
 
 from PySide6 import QtGui, QtWidgets, QtCore
-from PySide6.Qt3DRender import Qt3DRender
-from PySide6.QtGui import QVector3D
-from PySide6.QtWidgets import QWidget, QHBoxLayout
-from PySide6.Qt3DExtras import Qt3DExtras
-from PySide6.Qt3DCore import Qt3DCore
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QSizePolicy, QVBoxLayout
+from matplotlib.axes import Axes
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
+from matplotlib.figure import Figure
+
+
+class PlotCanvas3D(FigureCanvasQTAgg):
+	axes: Axes
+
+	def __init__(self):
+		self.fig = Figure()
+		self.axes = self.fig.add_subplot(111, projection="3d")
+
+		super(PlotCanvas3D, self).__init__(self.fig)
+		FigureCanvasQTAgg.setSizePolicy(self, QSizePolicy.Expanding, QSizePolicy.Expanding)
+		FigureCanvasQTAgg.updateGeometry(self)
+		self.axes.mouse_init()
+
+	def clear(self):
+		self.axes.cla()
+
+	def update_graph(self):
+		self.draw()
 
 
 class SkeletonView(QWidget):
-	_window: Qt3DExtras.Qt3DWindow
-	_container: QWidget
-	_camera: Qt3DRender.QCamera
-	_controller: Qt3DExtras.QOrbitCameraController
-	_root: Qt3DCore.QEntity
+	_canvas: PlotCanvas3D
+	_keypoints_x: List[Any]
+	_keypoints_y: List[Any]
+	_keypoints_z: List[Any]
+	_keypoints_l: List[Any]
+	_bones: List[Any]
+	_toolbar: NavigationToolbar2QT
 
 	def __init__(self, *args, **kwargs):
 		super(SkeletonView, self).__init__(*args, **kwargs)
 
-		self._window = Qt3DExtras.Qt3DWindow()
-		self._window.defaultFrameGraph().setClearColor(QtGui.QColor("#a5bde8"))
+		self._canvas = PlotCanvas3D()
+		self._toolbar = NavigationToolbar2QT(self._canvas, self)
 
-		self._container = QtWidgets.QWidget.createWindowContainer(self._window)
-
-		screen_size = self._window.size()
-		self._container.setMinimumSize(QtCore.QSize(200, 100))
-		self._container.setMaximumSize(screen_size)
-
-		self._camera = self._window.camera()
-
-		self._camera.lens().setPerspectiveProjection(45.0, 1.0, 0.1, 10000.0)
-		self._camera.setPosition(QtGui.QVector3D(20.0, 0.0, 0.0))
-		self._camera.setUpVector(QtGui.QVector3D(0, 1, 0))
-		self._camera.setViewCenter(QtGui.QVector3D(0, 0, 0))
-
-		self._root = Qt3DCore.QEntity()
-		self._controller = Qt3DExtras.QOrbitCameraController(self._root)
-		self._controller.setLinearSpeed(50.0)
-		self._controller.setLookSpeed(180.0)
-		self._controller.setCamera(self._camera)
-
-		self._window.setRootEntity(self._root)
-
-		layout = QHBoxLayout()
-		layout.addWidget(self._container)
+		layout = QVBoxLayout()
+		layout.addWidget(self._canvas)
+		layout.addWidget(self._toolbar)
 		self.setLayout(layout)
 
+		self._keypoints_x = []
+		self._keypoints_y = []
+		self._keypoints_z = []
+		self._keypoints_l = []
+		self._bones = []
+
 	def draw_line(self, start, end):
-		vec = end[0] - start[0], end[1] - start[1], end[2] - start[2]
-		length = math.hypot(*vec)
-		edge = Qt3DCore.QEntity(self._root)
+		self._bones.append((start[0], start[1], start[2], end[0], end[1], end[2]))
 
-		cylinder = Qt3DExtras.QCylinderMesh(edge)
-		cylinder.setLength(length)
-		cylinder.setRadius(0.3)
+	def clear(self):
+		self._canvas.clear()
+		self._keypoints_x = []
+		self._keypoints_y = []
+		self._keypoints_z = []
+		self._keypoints_l = []
+		self._bones = []
 
-		x_angle = math.atan(math.sqrt(math.pow(vec[2], 2) + math.pow(vec[0], 2)) / vec[1]) / math.pi * 180
-		y_angle = 0 if vec[0] == 0 and vec[2] == 0 else math.atan(vec[0] / vec[2]) / math.pi * 180
+	def add_keypoint(self, x, y, z, label):
+		self._keypoints_x.append(x)
+		self._keypoints_y.append(y)
+		self._keypoints_z.append(z)
+		self._keypoints_l.append(label)
 
-		transform = Qt3DCore.QTransform(edge)
-		transform.setRotationX(x_angle)
-		transform.setRotationY(y_angle)
-		transform.setTranslation(
-			QVector3D(
-				(end[0] + start[0]) / 2,
-				(end[1] + start[1]) / 2,
-				(end[2] + start[2]) / 2
-			)
-		)
+	def draw(self):
+		self._canvas.axes.scatter(self._keypoints_y, self._keypoints_x, self._keypoints_z, c='b')
 
-		material = Qt3DExtras.QPhongMaterial(edge)
-		material.setDiffuse("#ffff00")
+		for i, label in enumerate(self._keypoints_l):
+			self._canvas.axes.text( self._keypoints_y[i], self._keypoints_x[i], self._keypoints_z[i], label)
+		for bone in self._bones:
+			self._canvas.axes.plot([bone[1], bone[4]], [bone[0], bone[3]], [bone[2], bone[5]])
 
-		edge.addComponent(cylinder)
-		edge.addComponent(transform)
-		edge.addComponent(material)
+		self._canvas.update_graph()
 
-	def draw_keypoint(self, x, y, z):
-		keypoint = Qt3DCore.QEntity(self._root)
 
-		sphere = Qt3DExtras.QSphereMesh(keypoint)
-		sphere.setRadius(100)
-
-		transform = Qt3DCore.QTransform(keypoint)
-		transform.setTranslation(QVector3D(x, y, z))
-
-		material = Qt3DExtras.QPhongMaterial(keypoint)
-		material.setDiffuse("#ff0000")
-
-		keypoint.addComponent(sphere)
-		keypoint.addComponent(transform)
-		keypoint.addComponent(material)
-
-	def set_camera(self, x, y, z):
-		self._camera.setViewCenter(QVector3D(x, y, z))
-		self._camera.setPosition(QVector3D(x+1000, y+1000, z+1000))
