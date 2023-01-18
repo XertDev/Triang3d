@@ -60,7 +60,7 @@ class SkeletalReconstructor:
 
 		guide_lines_per_landmark = dict()
 		for landmark_key in grouped_landmarks.keys():
-			if grouped_landmarks[landmark_key].count(None) >= 1:
+			if grouped_landmarks[landmark_key].count(None) > 1:
 				continue
 
 			guide_lines_per_landmark[landmark_key] = self.map_image_point_to_camera_lines(grouped_landmarks[landmark_key])

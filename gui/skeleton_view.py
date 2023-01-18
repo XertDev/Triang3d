@@ -1,13 +1,43 @@
 import math
 from typing import List, Any
 
+import numpy as np
 from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QSizePolicy, QVBoxLayout
+from matplotlib import artist, cbook
 from matplotlib.axes import Axes
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.figure import Figure
+
+## dirty fix
+import mpl_toolkits.mplot3d.art3d
+from mpl_toolkits.mplot3d import proj3d
+from matplotlib import (
+	artist, cbook, text as mtext)
+
+
+# Fixed method
+def _norm_text_angle(a):
+	a = (a + 180) % 180
+	if a > 90:
+		a = a - 180
+	return a
+
+
+@artist.allow_rasterization
+def draw(self, renderer):
+	position3d = np.array((self._x, self._y, self._z))
+	proj = proj3d.proj_trans_points(
+		[position3d, position3d + self._dir_vec], self.axes.M)
+	angle = 1
+	with cbook._setattr_cm(self, _x=proj[0][0], _y=proj[1][0], _rotation=_norm_text_angle(angle)):
+		mtext.Text.draw(self, renderer)
+	self.stale = False
+
+
+mpl_toolkits.mplot3d.art3d.Text3D.draw = draw
 
 
 class PlotCanvas3D(FigureCanvasQTAgg):
@@ -42,11 +72,11 @@ class SkeletonView(QWidget):
 		super(SkeletonView, self).__init__(*args, **kwargs)
 
 		self._canvas = PlotCanvas3D()
-		self._toolbar = NavigationToolbar2QT(self._canvas, self)
+		# self._toolbar = NavigationToolbar2QT(self._canvas, self)
 
 		layout = QVBoxLayout()
 		layout.addWidget(self._canvas)
-		layout.addWidget(self._toolbar)
+		# layout.addWidget(self._toolbar)
 		self.setLayout(layout)
 
 		self._keypoints_x = []
@@ -76,10 +106,8 @@ class SkeletonView(QWidget):
 		self._canvas.axes.scatter(self._keypoints_y, self._keypoints_x, self._keypoints_z, c='b')
 
 		for i, label in enumerate(self._keypoints_l):
-			self._canvas.axes.text( self._keypoints_y[i], self._keypoints_x[i], self._keypoints_z[i], label)
+			self._canvas.axes.text(self._keypoints_y[i], self._keypoints_x[i], self._keypoints_z[i], label)
 		for bone in self._bones:
 			self._canvas.axes.plot([bone[1], bone[4]], [bone[0], bone[3]], [bone[2], bone[5]])
 
 		self._canvas.update_graph()
-
-

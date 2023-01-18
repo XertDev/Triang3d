@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 import sys
 import logging
 
+from PySide6 import QtCore
+
 import gui
 
 import PySide6.QtCore
@@ -25,6 +27,7 @@ logging.info("QtCore version: " + PySide6.QtCore.__version__)
 app = QApplication(sys.argv)
 
 window = gui.MainWindow()
+window.setWindowState(QtCore.Qt.WindowMaximized)
 window.show()
 
 app.exec()
